@@ -52,7 +52,6 @@ const AYARLAR_ALTIN=[{label:"8 Ayar",oran:0.333},{label:"10 Ayar",oran:0.416},{l
 const AYARLAR_GUMUS=[{label:"700",oran:0.700},{label:"800",oran:0.800},{label:"900",oran:0.900},{label:"925",oran:0.925},{label:"999",oran:0.999}];
 const DUKKAN_DEFAULT={ad:"ALTIN DÜNYASI KUYUMCULUK",adres:"Kapalıçarşı No:42, İstanbul",telefon:"0212 555 44 33"};
 const fmt$=(n)=>"$"+(parseFloat(n)||0).toFixed(2);
-const fmtGr=(n)=>(parseFloat(n)||0).toFixed(3)+"gr";
 const tarihStr=()=>new Date().toLocaleString("tr-TR");
 let _fisNo=2000;
 const yeniFisNo=()=>`F${++_fisNo}`;
@@ -111,8 +110,6 @@ function GumusSatirGiris({satir,index,onChange,onSil}){
   const secilenAyar=AYARLAR_GUMUS.find(a=>a.label===satir.ayar);
   const gram=parseFloat(satir.gram)||0;
   const iscilikFiyat=parseFloat(satir.iscilikFiyat)||0;
-  const iscilikToplam=gram*iscilikFiyat;
-  const adetToplam=(parseFloat(satir.adet)||0)*(parseFloat(satir.adetFiyat)||0);
   const guncelle=(alan,deger)=>{
     const yeni={...satir,[alan]:deger};
     yeni.tutar=yeni.mod==="gumus_iscilik"?(parseFloat(yeni.gram)||0)*(parseFloat(yeni.iscilikFiyat)||0):(parseFloat(yeni.adet)||0)*(parseFloat(yeni.adetFiyat)||0);
@@ -144,10 +141,10 @@ function GumusSatirGiris({satir,index,onChange,onSil}){
           <input value={satir.gram} onChange={e=>guncelle("gram",e.target.value)} type="number" inputMode="decimal" placeholder="0.000" style={{...S.input,marginBottom:10}}/>
           <span style={S.label}>İŞÇİLİK FİYATI ($/gr)</span>
           <input value={satir.iscilikFiyat} onChange={e=>guncelle("iscilikFiyat",e.target.value)} type="number" inputMode="decimal" placeholder="0.00" style={{...S.input,marginBottom:8}}/>
-          {gram>0&&iscilikFiyat>0&&<div style={{padding:"8px 12px",background:"#0f1923",borderRadius:6,marginBottom:8}}><div style={{fontSize:11,color:"#64748b"}}>{gram}gr × ${iscilikFiyat}/gr</div><div style={{fontSize:15,color:"#10b981",fontWeight:700,marginTop:2}}>{fmt$(iscilikToplam)} işçilik</div></div>}
+          {gram>0&&iscilikFiyat>0&&<div style={{padding:"8px 12px",background:"#0f1923",borderRadius:6,marginBottom:8}}><div style={{fontSize:11,color:"#64748b"}}>{gram}gr × ${iscilikFiyat}/gr</div><div style={{fontSize:15,color:"#10b981",fontWeight:700,marginTop:2}}>{fmt$(gram*iscilikFiyat)} işçilik</div></div>}
           <div style={{paddingTop:10,borderTop:"1px solid #1e3a52"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#475569",fontSize:12}}>Gümüş</span><span style={{color:"#94a3b8",fontWeight:700}}>{satir.gram||0} gr</span></div>
-            <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#475569",fontSize:12}}>İşçilik</span><span style={{color:"#f0a500",fontWeight:700,fontSize:16}}>{fmt$(iscilikToplam)}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#475569",fontSize:12}}>İşçilik</span><span style={{color:"#f0a500",fontWeight:700,fontSize:16}}>{fmt$(gram*iscilikFiyat)}</span></div>
           </div>
         </>
       )}
@@ -157,9 +154,9 @@ function GumusSatirGiris({satir,index,onChange,onSil}){
             <div><span style={S.label}>ADET</span><input value={satir.adet} onChange={e=>guncelle("adet",e.target.value)} type="number" inputMode="decimal" placeholder="1" style={S.input}/></div>
             <div><span style={S.label}>BİRİM FİYAT ($)</span><input value={satir.adetFiyat} onChange={e=>guncelle("adetFiyat",e.target.value)} type="number" inputMode="decimal" placeholder="0.00" style={S.input}/></div>
           </div>
-          <div style={{paddingTop:10,borderTop:"1px solid #1e3a52",marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{paddingTop:10,borderTop:"1px solid #1e3a52",marginTop:10,display:"flex",justifyContent:"space-between"}}>
             <span style={{color:"#475569",fontSize:11}}>{satir.adet&&satir.adetFiyat?`${satir.adet} × ${fmt$(satir.adetFiyat)}`:""}</span>
-            <span style={{color:"#f0a500",fontWeight:700,fontSize:18}}>{fmt$(adetToplam)}</span>
+            <span style={{color:"#f0a500",fontWeight:700,fontSize:18}}>{fmt$((parseFloat(satir.adet)||0)*(parseFloat(satir.adetFiyat)||0))}</span>
           </div>
         </>
       )}
@@ -241,9 +238,11 @@ function SatirGiris({satir,index,kategori,onChange,onSil}){
   );
 }
 
-// ─── FİŞ HTML OLUŞTUR ────────────────────────────────────────────────────────
+// ─── FİŞ HTML ────────────────────────────────────────────────────────────────
 function fisPrintHtml(fis){
   const katLabel=KATEGORILER.find(k=>k.id===fis.kategori)?.label||"";
+  const oncekiBakiye=fis.oncekiBakiye!==undefined?fis.oncekiBakiye:null;
+  const yeniBakiye=fis.yeniBakiye!==undefined?fis.yeniBakiye:null;
   const satirlarHtml=fis.satirlar.map(s=>{
     if(s.tipi==="gumus"){
       if(s.mod==="gumus_iscilik"){
@@ -258,53 +257,44 @@ function fisPrintHtml(fis){
     const isc=s.iscilikMod==="gramBazli"&&s.iscilikFiyat?` İşç:${s.gram}gr×${fmt$(s.iscilikFiyat)}`:s.iscilikMod==="sabit"&&s.sabitIscilik?` İşç:${fmt$(s.sabitIscilik)}`:"";
     return `<div class="b" style="margin-top:6px">${s.aciklama||"Ürün"}</div><div class="row sm"><span>${detay}${isc}</span><b>${fmt$(s.tutar)}</b></div>`;
   }).join("");
+
+  const bakiyeHtml=oncekiBakiye!==null&&fis.cari?`
+    <hr class="hr">
+    <div class="sm b">CARİ DURUM</div>
+    <div class="row sm"><span>Önceki Bakiye</span><span>${fmt$(oncekiBakiye)}</span></div>
+    <div class="row sm"><span>Bu Satış</span><span>${fis.odemeAlindi?"Ödendi":"-"+fmt$(fis.toplam)}</span></div>
+    <div class="row sm b"><span>Yeni Bakiye</span><span>${fmt$(yeniBakiye)}</span></div>
+  `:"";
+
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fiş ${fis.no}</title>
   <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Courier New',monospace;font-size:13px;width:280px;padding:12px;}.c{text-align:center;}.b{font-weight:bold;}.hr{border:none;border-top:1px dashed #999;margin:8px 0;}.row{display:flex;justify-content:space-between;}.sm{font-size:11px;color:#666;}@media print{.np{display:none;}}</style>
   </head><body>
   <div class="c b" style="font-size:14px;margin-bottom:2px">${fis.dukkan.ad}</div>
   <div class="c sm">${fis.dukkan.adres}</div><div class="c sm">Tel: ${fis.dukkan.telefon}</div>
-  <hr class="hr"><div class="row"><span>Fiş No: <b>${fis.no}</b></span><span class="sm">${fis.tarih}</span></div>
-  <div class="sm">İşlem: ${katLabel}</div>${fis.cari?`<div class="sm">Müşteri: <b>${fis.cari.ad}</b></div>`:""}
+  <hr class="hr">
+  <div class="row"><span>Fiş No: <b>${fis.no}</b></span><span class="sm">${fis.tarih}</span></div>
+  <div class="sm">İşlem: ${katLabel}</div>
+  ${fis.cari?`<div class="sm b" style="font-size:13px;margin-top:2px">Müşteri: ${fis.cari.ad}</div>`:""}
   ${fis.odemeAlindi!==undefined&&fis.odemeAlindi!==null?`<div class="sm">${fis.odemeAlindi?"✅ Ödeme Alındı":"⏳ Veresiye"}</div>`:""}
   <hr class="hr">${satirlarHtml}<hr class="hr">
   ${fis.toplamGram?`<div class="row sm"><span>Toplam Gümüş</span><span>${fis.toplamGram} gr</span></div>`:""}
   ${fis.toplamIscilik?`<div class="row sm"><span>Toplam İşçilik</span><span>${fmt$(fis.toplamIscilik)}</span></div>`:""}
   <div class="row b" style="font-size:15px"><span>TOPLAM</span><span>${fis.toplamGram?fis.toplamGram+"gr ":""}${fmt$(fis.toplam)}</span></div>
+  ${bakiyeHtml}
   <hr class="hr"><div class="c sm" style="margin-top:8px">Teşekkür ederiz 🙏</div>
-  <div class="np" style="margin-top:16px">
-    <button onclick="window.print()" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-bottom:8px">🖨️ Yazdır</button>
-  </div></body></html>`;
+  <div class="np" style="margin-top:16px"><button onclick="window.print()" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">🖨️ Yazdır / PDF</button></div>
+  </body></html>`;
 }
 
 // ─── FİŞ GÖRÜNTÜLE ───────────────────────────────────────────────────────────
-function FisGoruntule({fis,onKapat}){
+function FisGoruntule({fis,onKapat,onDuzenle}){
   const katLabel=KATEGORILER.find(k=>k.id===fis.kategori)?.label||"";
+  const oncekiBakiye=fis.oncekiBakiye;
+  const yeniBakiye=fis.yeniBakiye;
 
-  const yazdir=()=>{
-    const w=window.open("","_blank");
-    w.document.write(fisPrintHtml(fis));
-    w.document.close();setTimeout(()=>w.print(),400);
-  };
-
-  const indir=()=>{
-    const html=fisPrintHtml(fis);
-    const blob=new Blob([html],{type:"text/html"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download=`Fis_${fis.no}.html`;a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const paylas=async()=>{
-    const html=fisPrintHtml(fis);
-    const blob=new Blob([html],{type:"text/html"});
-    const file=new File([blob],`Fis_${fis.no}.html`,{type:"text/html"});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      try{await navigator.share({files:[file],title:`Fiş ${fis.no}`});}catch(e){}
-    } else {
-      indir();
-    }
-  };
+  const yazdir=()=>{const w=window.open("","_blank");w.document.write(fisPrintHtml(fis));w.document.close();setTimeout(()=>w.print(),400);};
+  const indir=()=>{const blob=new Blob([fisPrintHtml(fis)],{type:"text/html"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`Fis_${fis.no}.html`;a.click();URL.revokeObjectURL(url);};
+  const paylas=async()=>{const html=fisPrintHtml(fis);const blob=new Blob([html],{type:"text/html"});const file=new File([blob],`Fis_${fis.no}.html`,{type:"text/html"});if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:`Fiş ${fis.no}`});}catch(e){}}else{indir();}};
 
   return(
     <div style={{flex:1,overflowY:"auto",padding:14}}>
@@ -317,7 +307,7 @@ function FisGoruntule({fis,onKapat}){
         <div style={{borderTop:"1px dashed #aaa",margin:"8px 0"}}/>
         <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span>Fiş No: <strong>{fis.no}</strong></span><span style={{fontSize:11,color:"#888"}}>{fis.tarih}</span></div>
         <div style={{fontSize:11,color:"#666"}}>İşlem: {katLabel}</div>
-        {fis.cari&&<div style={{fontSize:12}}>Müşteri: <strong>{fis.cari.ad}</strong></div>}
+        {fis.cari&&<div style={{fontSize:13,fontWeight:700,color:"#111",marginTop:2}}>Müşteri: {fis.cari.ad}</div>}
         {fis.odemeAlindi!==null&&fis.odemeAlindi!==undefined&&<div style={{fontSize:11,color:fis.odemeAlindi?"#059669":"#d97706",fontWeight:700}}>{fis.odemeAlindi?"✅ Ödeme Alındı":"⏳ Veresiye"}</div>}
         <div style={{borderTop:"1px dashed #aaa",margin:"8px 0"}}/>
         {fis.satirlar.map((s,i)=>(
@@ -346,6 +336,17 @@ function FisGoruntule({fis,onKapat}){
           {fis.toplamIscilik>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}><span>Toplam İşçilik</span><span style={{fontWeight:700}}>{fmt$(fis.toplamIscilik)}</span></div>}
           <div style={{display:"flex",justifyContent:"space-between",fontWeight:700,fontSize:15}}><span>TOPLAM</span><span>{fis.toplamGram>0?`${fis.toplamGram}gr `:""}{fmt$(fis.toplam)}</span></div>
         </div>
+        {/* Bakiye özeti */}
+        {fis.cari&&oncekiBakiye!==undefined&&(
+          <>
+            <div style={{borderTop:"1px dashed #aaa",marginTop:8,paddingTop:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#555",marginBottom:4}}>CARİ DURUM</div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#666"}}><span>Önceki Bakiye</span><span>{fmt$(oncekiBakiye)}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#666"}}><span>Bu Satış</span><span style={{color:fis.odemeAlindi?"#059669":"#e04040"}}>{fis.odemeAlindi?"Ödendi":"-"+fmt$(fis.toplam)}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,marginTop:4,paddingTop:4,borderTop:"1px dashed #ddd"}}><span>Yeni Bakiye</span><span style={{color:yeniBakiye<0?"#e04040":yeniBakiye>0?"#059669":"#888"}}>{fmt$(yeniBakiye)}</span></div>
+            </div>
+          </>
+        )}
         <div style={{textAlign:"center",marginTop:10,fontSize:11,color:"#888"}}>— Teşekkür ederiz 🙏 —</div>
       </div>
       <div style={{maxWidth:300,margin:"14px auto 0",display:"flex",flexDirection:"column",gap:8}}>
@@ -354,25 +355,27 @@ function FisGoruntule({fis,onKapat}){
           <button onClick={indir} style={{...S.btn("#1e2d3d","#60a5fa"),border:"1px solid #2d4a6e",fontSize:14}} className="noprint">⬇️ İndir</button>
           <button onClick={paylas} style={{...S.btn("#1e2d3d","#10b981"),border:"1px solid #2d4a6e",fontSize:14}} className="noprint">↗️ Paylaş</button>
         </div>
-        <button onClick={onKapat} style={{...S.btn("#16222e","#64748b"),border:"1px solid #1e3a52",fontSize:14}} className="noprint">← Yeni Fiş</button>
+        {onDuzenle&&<button onClick={onDuzenle} style={{...S.btn("#1e2d3d","#f0a500"),border:"1px solid #f0a50055",fontSize:14}} className="noprint">✏️ Fişi Düzenle</button>}
+        <button onClick={onKapat} style={{...S.btn("#16222e","#64748b"),border:"1px solid #1e3a52",fontSize:14}} className="noprint">← Geri</button>
       </div>
     </div>
   );
 }
 
 // ─── FİŞ EKRANI ──────────────────────────────────────────────────────────────
-function FisEkrani({cariler,setCariler,dukkan,onFisKesild}){
-  const [kategori,setKategori]=useState("gumus_satis");
-  const [satirlar,setSatirlar]=useState([]);
-  const [gumusSatirlar,setGumusSatirlar]=useState([]);
-  const [cariId,setCariId]=useState("");
-  const [odemeAlindi,setOdemeAlindi]=useState(null);
+function FisEkrani({cariler,setCariler,dukkan,onFisKesild,duzenlenecekFis,onDuzenlemeTemizle}){
+  const [kategori,setKategori]=useState(duzenlenecekFis?.kategori||"gumus_satis");
+  const [satirlar,setSatirlar]=useState(duzenlenecekFis&&duzenlenecekFis.kategori!=="gumus_satis"?duzenlenecekFis.satirlar:[]);
+  const [gumusSatirlar,setGumusSatirlar]=useState(duzenlenecekFis?.kategori==="gumus_satis"?duzenlenecekFis.satirlar:[]);
+  const [cariId,setCariId]=useState(duzenlenecekFis?.cari?.id||"");
+  const [odemeAlindi,setOdemeAlindi]=useState(duzenlenecekFis?.odemeAlindi??null);
   const [fisGoster,setFisGoster]=useState(null);
+  const duzenleme=!!duzenlenecekFis;
 
   const bosSatir=()=>({id:Date.now()+Math.random(),aciklama:"",mod:"gramli",iscilikMod:"sabit",gram:"",birimFiyat:"",ayar:"",iscilikFiyat:"",sabitIscilik:"",adet:"",adetFiyat:"",tutar:0});
   const bosGumusSatir=()=>({id:Date.now()+Math.random(),tipi:"gumus",aciklama:"",mod:"gumus_iscilik",ayar:"",gram:"",iscilikFiyat:"",adet:"",adetFiyat:"",tutar:0});
   const satirEkle=()=>{if(kategori==="gumus_satis")setGumusSatirlar(p=>[...p,bosGumusSatir()]);else setSatirlar(p=>[...p,bosSatir()]);};
-  const kategoriDegistir=(k)=>{setKategori(k);setSatirlar([]);setGumusSatirlar([]);setOdemeAlindi(null);};
+  const kategoriDegistir=(k)=>{if(duzenleme)return;setKategori(k);setSatirlar([]);setGumusSatirlar([]);setOdemeAlindi(null);};
   const aktifSatirlar=kategori==="gumus_satis"?gumusSatirlar:satirlar;
   const toplamGram=kategori==="gumus_satis"?gumusSatirlar.filter(s=>s.mod==="gumus_iscilik").reduce((a,s)=>a+(parseFloat(s.gram)||0),0):0;
   const toplamIscilik=kategori==="gumus_satis"?gumusSatirlar.reduce((a,s)=>a+(s.mod==="gumus_iscilik"?(parseFloat(s.gram)||0)*(parseFloat(s.iscilikFiyat)||0):(parseFloat(s.adet)||0)*(parseFloat(s.adetFiyat)||0)),0):0;
@@ -381,22 +384,56 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild}){
   const fisCik=()=>{
     if(!aktifSatirlar.length||(cariId&&odemeAlindi===null))return;
     const cari=cariler.find(c=>c.id===cariId)||null;
-    const fis={no:yeniFisNo(),tarih:tarihStr(),kategori,satirlar:aktifSatirlar,toplam,toplamGram,toplamIscilik,cari,odemeAlindi:cari?odemeAlindi:null,dukkan};
+    const oncekiBakiye=cari?(cari.bakiye||0):undefined;
+
+    // Düzenleme modunda eski fişin cari etkisini geri al
+    if(duzenleme&&duzenlenecekFis.cari){
+      const eskiCariId=duzenlenecekFis.cari.id;
+      const eskiToplam=duzenlenecekFis.toplam;
+      const eskiOdeme=duzenlenecekFis.odemeAlindi;
+      setCariler(prev=>prev.map(c=>{
+        if(c.id!==eskiCariId)return c;
+        const geriAl=eskiOdeme?0:eskiToplam; // veresiye ise borcu geri al
+        const yeniFisler=(c.fisler||[]).filter(f=>f.no!==duzenlenecekFis.no);
+        const yeniIslemler=(c.islemler||[]).filter(i=>i.fisNo!==duzenlenecekFis.no);
+        return {...c,bakiye:(c.bakiye||0)+geriAl,fisler:yeniFisler,islemler:yeniIslemler};
+      }));
+    }
+
+    const fis={
+      no:duzenleme?duzenlenecekFis.no:yeniFisNo(),
+      tarih:duzenleme?duzenlenecekFis.tarih:tarihStr(),
+      kategori,satirlar:aktifSatirlar,toplam,toplamGram,toplamIscilik,
+      cari,odemeAlindi:cari?odemeAlindi:null,dukkan,
+      oncekiBakiye,
+      yeniBakiye:cari?(odemeAlindi?(oncekiBakiye||0):(oncekiBakiye||0)-toplam):undefined,
+    };
+
     // Cariye işle
     if(cari){
       const katLabel=KATEGORILER.find(k=>k.id===kategori)?.label||"";
       if(!odemeAlindi){
-        const islem={id:Date.now(),tip:"borc",tutar:toplam,aciklama:`Fiş ${fis.no} - ${katLabel}${toplamGram?` (${toplamGram}gr gümüş)`:""}`,tarih:tarihStr(),fisNo:fis.no};
-        setCariler(p=>p.map(c=>c.id===cariId?{...c,bakiye:c.bakiye-toplam,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]}:c));
+        const islem={id:Date.now(),tip:"borc",tutar:toplam,aciklama:`Fiş ${fis.no} - ${katLabel}${toplamGram?` (${toplamGram}gr gümüş)`:""}`,tarih:fis.tarih,fisNo:fis.no};
+        setCariler(p=>p.map(c=>{
+          if(c.id!==cariId)return c;
+          const yeniBak=(c.bakiye||0)-toplam;
+          return{...c,bakiye:yeniBak,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]};
+        }));
       } else {
-        const islem={id:Date.now(),tip:"odeme",tutar:toplam,aciklama:`Fiş ${fis.no} - Nakit ödeme`,tarih:tarihStr(),fisNo:fis.no};
-        setCariler(p=>p.map(c=>c.id===cariId?{...c,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]}:c));
+        const islem={id:Date.now(),tip:"odeme",tutar:toplam,aciklama:`Fiş ${fis.no} - Nakit ödeme`,tarih:fis.tarih,fisNo:fis.no};
+        setCariler(p=>p.map(c=>{
+          if(c.id!==cariId)return c;
+          return{...c,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]};
+        }));
       }
     }
-    onFisKesild(fis);setFisGoster(fis);
+    onFisKesild(fis,duzenleme);
+    setFisGoster(fis);
   };
 
-  if(fisGoster)return <FisGoruntule fis={fisGoster} onKapat={()=>{setFisGoster(null);setSatirlar([]);setGumusSatirlar([]);setCariId("");setOdemeAlindi(null);}}/>;
+  if(fisGoster)return(
+    <FisGoruntule fis={fisGoster} onKapat={()=>{setFisGoster(null);setSatirlar([]);setGumusSatirlar([]);setCariId("");setOdemeAlindi(null);if(onDuzenlemeTemizle)onDuzenlemeTemizle();}}/>
+  );
 
   const kat=KATEGORILER.find(k=>k.id===kategori);
   const cariSecildi=!!cariId;
@@ -404,9 +441,15 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild}){
 
   return(
     <div style={{flex:1,overflowY:"auto",padding:14}}>
+      {duzenleme&&(
+        <div style={{background:"#2a1a0a",border:"1px solid #f0a50055",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{color:"#f0a500",fontSize:13}}>✏️ Düzenleniyor: <b>{duzenlenecekFis.no}</b></span>
+          <button onClick={onDuzenlemeTemizle} style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:12,fontFamily:"Georgia,serif"}}>İptal</button>
+        </div>
+      )}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
         {KATEGORILER.map(k=>(
-          <button key={k.id} onClick={()=>kategoriDegistir(k.id)} style={{background:kategori===k.id?k.renk+"22":"#16222e",border:`1px solid ${kategori===k.id?k.renk:"#1e3a52"}`,borderRadius:10,padding:"11px 8px",cursor:"pointer",color:kategori===k.id?k.renk:"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:kategori===k.id?700:400,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <button key={k.id} onClick={()=>kategoriDegistir(k.id)} style={{background:kategori===k.id?k.renk+"22":"#16222e",border:`1px solid ${kategori===k.id?k.renk:"#1e3a52"}`,borderRadius:10,padding:"11px 8px",cursor:duzenleme?"not-allowed":"pointer",opacity:duzenleme&&kategori!==k.id?0.4:1,color:kategori===k.id?k.renk:"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:kategori===k.id?700:400,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
             {k.ikon} {k.label}
           </button>
         ))}
@@ -415,17 +458,18 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild}){
         <span style={S.label}>MÜŞTERİ (OPSİYONEL)</span>
         <select value={cariId} onChange={e=>{setCariId(e.target.value);setOdemeAlindi(null);}} style={{...S.input,color:cariId?"#e2e8f0":"#64748b"}}>
           <option value="">— Misafir Müşteri —</option>
-          {cariler.map(c=><option key={c.id} value={c.id}>{c.ad} ({fmt$(c.bakiye)})</option>)}
+          {cariler.map(c=><option key={c.id} value={c.id}>{c.ad} ({fmt$(c.bakiye||0)})</option>)}
         </select>
         {cariSecildi&&(
           <div style={{marginTop:10}}>
-            {secilenCari&&<div style={{padding:"6px 10px",background:"#0f1923",borderRadius:6,marginBottom:10}}><span style={{fontSize:11,color:"#64748b"}}>Mevcut Bakiye: </span><span style={{fontWeight:700,color:secilenCari.bakiye<0?"#ef4444":secilenCari.bakiye>0?"#10b981":"#475569"}}>{fmt$(secilenCari.bakiye)}</span></div>}
+            {secilenCari&&<div style={{padding:"6px 10px",background:"#0f1923",borderRadius:6,marginBottom:10}}><span style={{fontSize:11,color:"#64748b"}}>Mevcut Bakiye: </span><span style={{fontWeight:700,color:(secilenCari.bakiye||0)<0?"#ef4444":(secilenCari.bakiye||0)>0?"#10b981":"#475569"}}>{fmt$(secilenCari.bakiye||0)}</span></div>}
             <span style={S.label}>ÖDEME DURUMU</span>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button onClick={()=>setOdemeAlindi(true)} style={{background:odemeAlindi===true?"#0a2a1a":"#1e2d3d",border:`1px solid ${odemeAlindi===true?"#10b981":"#2d4a6e"}`,borderRadius:8,padding:"10px 0",cursor:"pointer",color:odemeAlindi===true?"#10b981":"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:odemeAlindi===true?700:400}}>✅ Ödeme Alındı</button>
               <button onClick={()=>setOdemeAlindi(false)} style={{background:odemeAlindi===false?"#2a1a0a":"#1e2d3d",border:`1px solid ${odemeAlindi===false?"#f0a500":"#2d4a6e"}`,borderRadius:8,padding:"10px 0",cursor:"pointer",color:odemeAlindi===false?"#f0a500":"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:odemeAlindi===false?700:400}}>⏳ Veresiye</button>
             </div>
-            {odemeAlindi===false&&<div style={{marginTop:8,padding:"6px 10px",background:"#2a1a0a",borderRadius:6,fontSize:12,color:"#f0a500"}}>Fiş kesilince {fmt$(toplam)} borç cariye işlenecek</div>}
+            {odemeAlindi===false&&<div style={{marginTop:8,padding:"6px 10px",background:"#2a1a0a",borderRadius:6,fontSize:12,color:"#f0a500"}}>Fiş kesilince {fmt$(toplam)} borç cariye işlenecek. Yeni bakiye: {fmt$((secilenCari?.bakiye||0)-toplam)}</div>}
+            {odemeAlindi===true&&toplam>0&&<div style={{marginTop:8,padding:"6px 10px",background:"#0a2a1a",borderRadius:6,fontSize:12,color:"#10b981"}}>Ödeme alındı. Bakiye değişmeyecek: {fmt$(secilenCari?.bakiye||0)}</div>}
           </div>
         )}
       </div>
@@ -448,13 +492,15 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild}){
         </div>
       )}
       {cariSecildi&&odemeAlindi===null&&aktifSatirlar.length>0&&<div style={{marginBottom:10,padding:"8px 12px",background:"#2a1a0a",borderRadius:8,border:"1px solid #f0a50033",fontSize:12,color:"#f0a500",textAlign:"center"}}>Ödeme durumunu seçin</div>}
-      <button onClick={fisCik} disabled={!aktifSatirlar.length||(cariSecildi&&odemeAlindi===null)} style={{...S.btn(aktifSatirlar.length&&(!cariSecildi||odemeAlindi!==null)?"linear-gradient(135deg,#f0a500,#d97706)":"#16222e",aktifSatirlar.length&&(!cariSecildi||odemeAlindi!==null)?"#1a0800":"#475569"),fontSize:16}}>🧾 Fiş Kes</button>
+      <button onClick={fisCik} disabled={!aktifSatirlar.length||(cariSecildi&&odemeAlindi===null)} style={{...S.btn(aktifSatirlar.length&&(!cariSecildi||odemeAlindi!==null)?"linear-gradient(135deg,#f0a500,#d97706)":"#16222e",aktifSatirlar.length&&(!cariSecildi||odemeAlindi!==null)?"#1a0800":"#475569"),fontSize:16}}>
+        {duzenleme?"✏️ Fişi Güncelle":"🧾 Fiş Kes"}
+      </button>
     </div>
   );
 }
 
 // ─── GEÇMİŞ ──────────────────────────────────────────────────────────────────
-function GecmisEkrani({fisler,setFisler}){
+function GecmisEkrani({fisler,setFisler,onDuzenle}){
   const [filtre,setFiltre]=useState("hepsi");
   const [secilenFis,setSecilenFis]=useState(null);
   const filtrelenmis=filtre==="hepsi"?fisler:fisler.filter(f=>f.kategori===filtre);
@@ -463,7 +509,7 @@ function GecmisEkrani({fisler,setFisler}){
   if(secilenFis)return(
     <div style={{flex:1,overflowY:"auto"}}>
       <div style={{padding:"10px 14px"}}><button onClick={()=>setSecilenFis(null)} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"Georgia,serif",fontSize:14}}>← Geri</button></div>
-      <FisGoruntule fis={secilenFis} onKapat={()=>setSecilenFis(null)}/>
+      <FisGoruntule fis={secilenFis} onKapat={()=>setSecilenFis(null)} onDuzenle={()=>{onDuzenle(secilenFis);setSecilenFis(null);}}/>
       <div style={{padding:"0 14px 14px",maxWidth:300,margin:"0 auto"}}><button onClick={()=>fisSil(secilenFis.no)} style={{...S.btn("#2a0a0a","#ef4444"),border:"1px solid #ef444433",marginTop:8}}>🗑️ Fişi Sil</button></div>
     </div>
   );
@@ -486,7 +532,7 @@ function GecmisEkrani({fisler,setFisler}){
         return(
           <button key={f.no} onClick={()=>setSecilenFis(f)} style={{...S.card,width:"100%",textAlign:"left",cursor:"pointer",border:"1px solid #1e3a52",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><span style={{fontSize:14}}>{kat?.ikon}</span><span style={{color:"#93c5fd",fontWeight:600,fontSize:14}}>{f.no}</span>{f.cari&&<span style={{color:"#475569",fontSize:12}}>• {f.cari.ad}</span>}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}><span style={{fontSize:14}}>{kat?.ikon}</span><span style={{color:"#93c5fd",fontWeight:600,fontSize:14}}>{f.no}</span>{f.cari&&<span style={{color:"#60a5fa",fontSize:12,fontWeight:600}}>• {f.cari.ad}</span>}</div>
               <div style={{color:"#475569",fontSize:11}}>{f.tarih}</div>
               <div style={{display:"flex",gap:8,marginTop:2}}><span style={{color:kat?.renk,fontSize:11}}>{kat?.label}</span>{f.odemeAlindi!==null&&f.odemeAlindi!==undefined&&<span style={{fontSize:11,color:f.odemeAlindi?"#10b981":"#f0a500"}}>{f.odemeAlindi?"✅ Ödendi":"⏳ Veresiye"}</span>}</div>
             </div>
@@ -552,11 +598,11 @@ function CariEkrani({cariler,setCariler}){
   const [ekran,setEkran]=useState("liste");
   const [secilenId,setSecilenId]=useState(null);
   const [yeniAd,setYeniAd]=useState("");const [yeniTel,setYeniTel]=useState("");
-  const [yeniBakiyeTip,setYeniBakiyeTip]=useState("sifir"); // sifir | borc | alacak
+  const [yeniBakiyeTip,setYeniBakiyeTip]=useState("sifir");
   const [yeniBakiye,setYeniBakiye]=useState("");
   const [islemTip,setIslemTip]=useState("odeme");
   const [islemTutar,setIslemTutar]=useState("");const [islemAcik,setIslemAcik]=useState("");
-  const [islemPara,setIslemPara]=useState("dolar"); // dolar | gumus
+  const [islemPara,setIslemPara]=useState("dolar");
   const [islemGram,setIslemGram]=useState("");
   const [secilenFis,setSecilenFis]=useState(null);
   const secilen=cariler.find(c=>c.id===secilenId);
@@ -565,30 +611,32 @@ function CariEkrani({cariler,setCariler}){
     if(!yeniAd.trim())return;
     let bakiye=0;
     if(yeniBakiyeTip==="borc")bakiye=-(parseFloat(yeniBakiye)||0);
-    else if(yeniBakiyeTip==="alacak")bakiye=parseFloat(yeniBakiye)||0;
-    const islemler=[];
-    if(bakiye!==0){
-      islemler.push({id:Date.now(),tip:bakiye<0?"borc":"odeme",tutar:Math.abs(bakiye),aciklama:"Açılış bakiyesi",tarih:tarihStr()});
-    }
+    else if(yeniBakiyeTip==="alacak")bakiye=(parseFloat(yeniBakiye)||0);
+    const islemler=bakiye!==0?[{id:Date.now(),tip:bakiye<0?"borc":"odeme",tutar:Math.abs(bakiye),aciklama:"Açılış bakiyesi",tarih:tarihStr()}]:[];
     setCariler(p=>[...p,{id:Date.now()+1,ad:yeniAd.trim(),telefon:yeniTel.trim(),bakiye,islemler,fisler:[]}]);
     setYeniAd("");setYeniTel("");setYeniBakiye("");setYeniBakiyeTip("sifir");setEkran("liste");
   };
 
   const islemYap=()=>{
-    const tutar=parseFloat(islemTutar);if(!tutar||!secilen)return;
-    let delta=islemTip==="odeme"?tutar:-tutar;
-    let aciklama=islemAcik||(islemTip==="odeme"?"Ödeme alındı":"Borç eklendi");
-    if(islemPara==="gumus"&&islemGram){
-      aciklama=`${islemAcik||"Gümüş ödeme"} (${islemGram}gr = $${tutar})`;
+    if(!secilen)return;
+    if(islemPara==="gumus"){
+      if(!islemGram)return;
+      const tutar=parseFloat(islemTutar)||0;
+      const delta=islemTip==="odeme"?tutar:-tutar;
+      const islem={id:Date.now(),tip:islemTip,tutar,aciklama:`${islemAcik||"Gümüş işlemi"} (${islemGram}gr)`,tarih:tarihStr(),gram:islemGram};
+      setCariler(p=>p.map(c=>c.id===secilenId?{...c,bakiye:(c.bakiye||0)+delta,islemler:[islem,...(c.islemler||[])]}:c));
+      setIslemTutar("");setIslemAcik("");setIslemGram("");
+    } else {
+      const tutar=parseFloat(islemTutar);if(!tutar)return;
+      const delta=islemTip==="odeme"?tutar:-tutar;
+      const islem={id:Date.now(),tip:islemTip,tutar,aciklama:islemAcik||(islemTip==="odeme"?"Ödeme alındı":"Borç eklendi"),tarih:tarihStr()};
+      setCariler(p=>p.map(c=>c.id===secilenId?{...c,bakiye:(c.bakiye||0)+delta,islemler:[islem,...(c.islemler||[])]}:c));
+      setIslemTutar("");setIslemAcik("");
     }
-    const islem={id:Date.now(),tip:islemTip,tutar,aciklama,tarih:tarihStr(),gram:islemPara==="gumus"?islemGram:null};
-    setCariler(p=>p.map(c=>c.id===secilenId?{...c,bakiye:c.bakiye+delta,islemler:[islem,...(c.islemler||[])]}:c));
-    setIslemTutar("");setIslemAcik("");setIslemGram("");
   };
 
   const cariSil=(id)=>{if(!window.confirm("Bu müşteriyi silmek istediğinize emin misiniz?"))return;setCariler(p=>p.filter(c=>c.id!==id));setEkran("liste");};
 
-  // Cari fişlerini göster
   if(secilenFis)return(
     <div style={{flex:1,overflowY:"auto"}}>
       <div style={{padding:"10px 14px"}}><button onClick={()=>setSecilenFis(null)} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"Georgia,serif",fontSize:14}}>← Geri</button></div>
@@ -607,8 +655,8 @@ function CariEkrani({cariler,setCariler}){
         <input value={yeniTel} onChange={e=>setYeniTel(e.target.value)} placeholder="0XXX XXX XX XX" type="tel" style={{...S.input,marginBottom:12}}/>
         <span style={S.label}>MEVCUT BAKİYE</span>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
-          {[["sifir","Sıfır"],["borc","Borcum Var"],["alacak","Alacağım Var"]].map(([val,lbl])=>(
-            <button key={val} onClick={()=>setYeniBakiyeTip(val)} style={{background:yeniBakiyeTip===val?"#1e3a52":"#1e2d3d",border:`1px solid ${yeniBakiyeTip===val?"#3b82f6":"#2d4a6e"}`,borderRadius:6,padding:"8px 4px",cursor:"pointer",color:yeniBakiyeTip===val?"#60a5fa":"#475569",fontFamily:"Georgia,serif",fontSize:11,fontWeight:yeniBakiyeTip===val?700:400}}>{lbl}</button>
+          {[["sifir","Sıfır"],["borc","Borçlu"],["alacak","Alacaklı"]].map(([val,lbl])=>(
+            <button key={val} onClick={()=>setYeniBakiyeTip(val)} style={{background:yeniBakiyeTip===val?"#1e3a52":"#1e2d3d",border:`1px solid ${yeniBakiyeTip===val?"#3b82f6":"#2d4a6e"}`,borderRadius:6,padding:"8px 4px",cursor:"pointer",color:yeniBakiyeTip===val?"#60a5fa":"#475569",fontFamily:"Georgia,serif",fontSize:12,fontWeight:yeniBakiyeTip===val?700:400}}>{lbl}</button>
           ))}
         </div>
         {yeniBakiyeTip!=="sifir"&&(
@@ -633,44 +681,41 @@ function CariEkrani({cariler,setCariler}){
         {secilen.telefon&&<div style={{color:"#475569",fontSize:13,marginTop:2}}>{secilen.telefon}</div>}
         <div style={{marginTop:12,padding:"12px 14px",background:"#0f1923",borderRadius:8}}>
           <div style={{color:"#475569",fontSize:11,letterSpacing:1}}>BAKİYE</div>
-          <div style={{color:secilen.bakiye<0?"#ef4444":secilen.bakiye>0?"#10b981":"#475569",fontSize:26,fontWeight:700,marginTop:2}}>{fmt$(secilen.bakiye)}</div>
-          <div style={{color:"#475569",fontSize:11}}>{secilen.bakiye<0?"BORÇLU":secilen.bakiye>0?"ALACAKLI":"SIFIR"}</div>
+          <div style={{color:(secilen.bakiye||0)<0?"#ef4444":(secilen.bakiye||0)>0?"#10b981":"#475569",fontSize:26,fontWeight:700,marginTop:2}}>{fmt$(secilen.bakiye||0)}</div>
+          <div style={{color:"#475569",fontSize:11}}>{(secilen.bakiye||0)<0?"BORÇLU":(secilen.bakiye||0)>0?"ALACAKLI":"SIFIR"}</div>
         </div>
       </div>
-
-      {/* İşlem yap */}
       <div style={S.card}>
         <div style={{color:"#64748b",fontSize:12,marginBottom:10,letterSpacing:1}}>İŞLEM YAP</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           {[["odeme","✅ Ödeme Al","#0a2a1a","#10b981"],["borc","➕ Borç Ekle","#2a0a0a","#ef4444"]].map(([val,lbl,bg,brd])=>(
             <button key={val} onClick={()=>setIslemTip(val)} style={{background:islemTip===val?bg:"#1e2d3d",border:`1px solid ${islemTip===val?brd:"#2d4a6e"}`,borderRadius:8,padding:"10px 0",cursor:"pointer",color:islemTip===val?"#fff":"#475569",fontFamily:"Georgia,serif",fontSize:13}}>{lbl}</button>
           ))}
         </div>
-        {/* Para birimi seçimi - sadece ödeme alırken */}
-        {islemTip==="odeme"&&(
+        <span style={S.label}>ÖDEME / BORÇ ŞEKLİ</span>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+          {[["dolar","💵 Dolar"],["gumus","⚪ Gümüş"]].map(([val,lbl])=>(
+            <button key={val} onClick={()=>setIslemPara(val)} style={{background:islemPara===val?"#1e3a52":"#1e2d3d",border:`1px solid ${islemPara===val?"#3b82f6":"#2d4a6e"}`,borderRadius:6,padding:"8px 0",cursor:"pointer",color:islemPara===val?"#60a5fa":"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:islemPara===val?700:400}}>{lbl}</button>
+          ))}
+        </div>
+        {islemPara==="gumus"&&(
           <>
-            <span style={S.label}>ÖDEME ŞEKLİ</span>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              {[["dolar","💵 Dolar"],["gumus","⚪ Gümüş"]].map(([val,lbl])=>(
-                <button key={val} onClick={()=>setIslemPara(val)} style={{background:islemPara===val?"#1e3a52":"#1e2d3d",border:`1px solid ${islemPara===val?"#3b82f6":"#2d4a6e"}`,borderRadius:6,padding:"8px 0",cursor:"pointer",color:islemPara===val?"#60a5fa":"#475569",fontFamily:"Georgia,serif",fontSize:13,fontWeight:islemPara===val?700:400}}>{lbl}</button>
-              ))}
-            </div>
-            {islemPara==="gumus"&&(
-              <>
-                <span style={S.label}>GÜMÜŞ MİKTARI (gr)</span>
-                <input value={islemGram} onChange={e=>setIslemGram(e.target.value)} type="number" inputMode="decimal" placeholder="0.000" style={{...S.input,marginBottom:10}}/>
-              </>
-            )}
+            <span style={S.label}>GÜMÜŞ MİKTARI (gr)</span>
+            <input value={islemGram} onChange={e=>setIslemGram(e.target.value)} type="number" inputMode="decimal" placeholder="0.000" style={{...S.input,marginBottom:10}}/>
+            <span style={S.label}>KARŞILIĞI $ (OPSİYONEL)</span>
+            <input value={islemTutar} onChange={e=>setIslemTutar(e.target.value)} type="number" inputMode="decimal" placeholder="0.00" style={{...S.input,marginBottom:10}}/>
           </>
         )}
-        <span style={S.label}>TUTAR ($)</span>
-        <input value={islemTutar} onChange={e=>setIslemTutar(e.target.value)} type="number" inputMode="decimal" placeholder="0.00" style={{...S.input,marginBottom:10}}/>
+        {islemPara==="dolar"&&(
+          <>
+            <span style={S.label}>TUTAR ($)</span>
+            <input value={islemTutar} onChange={e=>setIslemTutar(e.target.value)} type="number" inputMode="decimal" placeholder="0.00" style={{...S.input,marginBottom:10}}/>
+          </>
+        )}
         <span style={S.label}>AÇIKLAMA</span>
         <input value={islemAcik} onChange={e=>setIslemAcik(e.target.value)} placeholder="Opsiyonel..." style={{...S.input,marginBottom:12}}/>
         <button onClick={islemYap} style={S.btn()}>Kaydet</button>
       </div>
-
-      {/* Fişler */}
       {(secilen.fisler||[]).length>0&&(
         <div style={S.card}>
           <div style={{color:"#64748b",fontSize:12,marginBottom:10,letterSpacing:1}}>FİŞLER ({secilen.fisler.length})</div>
@@ -682,28 +727,19 @@ function CariEkrani({cariler,setCariler}){
                   <div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{fontSize:12}}>{kat?.ikon}</span><span style={{color:"#93c5fd",fontSize:13,fontWeight:600}}>{f.no}</span><span style={{color:f.odemeAlindi?"#10b981":"#f0a500",fontSize:11}}>{f.odemeAlindi?"✅":"⏳"}</span></div>
                   <div style={{color:"#475569",fontSize:11,marginTop:2}}>{f.tarih}</div>
                 </div>
-                <div style={{textAlign:"right"}}>
-                  {f.toplamGram>0&&<div style={{color:"#94a3b8",fontSize:11}}>{f.toplamGram}gr</div>}
-                  <div style={{color:"#f0a500",fontWeight:700,fontSize:14}}>{fmt$(f.toplam)}</div>
-                </div>
+                <div style={{textAlign:"right"}}>{f.toplamGram>0&&<div style={{color:"#94a3b8",fontSize:11}}>{f.toplamGram}gr</div>}<div style={{color:"#f0a500",fontWeight:700,fontSize:14}}>{fmt$(f.toplam)}</div></div>
               </button>
             );
           })}
         </div>
       )}
-
-      {/* İşlem geçmişi */}
       {(secilen.islemler||[]).length>0&&(
         <div style={S.card}>
           <div style={{color:"#64748b",fontSize:12,marginBottom:10,letterSpacing:1}}>İŞLEM GEÇMİŞİ</div>
           {(secilen.islemler||[]).map(is=>(
             <div key={is.id} style={{padding:"8px 0",borderBottom:"1px solid #16222e",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{color:"#cbd5e1",fontSize:13}}>{is.aciklama}</div>
-                {is.gram&&<div style={{color:"#94a3b8",fontSize:11}}>{is.gram}gr gümüş</div>}
-                <div style={{color:"#475569",fontSize:11}}>{is.tarih}</div>
-              </div>
-              <div style={{color:is.tip==="odeme"?"#10b981":"#ef4444",fontWeight:700,fontSize:14}}>{is.tip==="odeme"?"+":"-"}{fmt$(is.tutar)}</div>
+              <div><div style={{color:"#cbd5e1",fontSize:13}}>{is.aciklama}</div>{is.gram&&<div style={{color:"#94a3b8",fontSize:11}}>{is.gram}gr gümüş</div>}<div style={{color:"#475569",fontSize:11}}>{is.tarih}</div></div>
+              <div style={{color:is.tip==="odeme"?"#10b981":"#ef4444",fontWeight:700,fontSize:14}}>{is.tip==="odeme"?"+":"-"}{is.tutar?fmt$(is.tutar):""}</div>
             </div>
           ))}
         </div>
@@ -720,15 +756,8 @@ function CariEkrani({cariler,setCariler}){
       {!cariler.length&&<div style={{textAlign:"center",color:"#334155",padding:40}}>Henüz müşteri yok</div>}
       {cariler.map(c=>(
         <button key={c.id} onClick={()=>{setSecilenId(c.id);setEkran("detay");}} style={{...S.card,width:"100%",textAlign:"left",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #1e3a52"}}>
-          <div>
-            <div style={{color:"#93c5fd",fontWeight:600,fontSize:15}}>{c.ad}</div>
-            {c.telefon&&<div style={{color:"#475569",fontSize:12,marginTop:2}}>{c.telefon}</div>}
-            {(c.fisler||[]).length>0&&<div style={{color:"#475569",fontSize:11,marginTop:2}}>{c.fisler.length} fiş</div>}
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{color:c.bakiye<0?"#ef4444":c.bakiye>0?"#10b981":"#475569",fontWeight:700,fontSize:15}}>{fmt$(c.bakiye)}</div>
-            <div style={{fontSize:10,color:c.bakiye<0?"#ef4444":c.bakiye>0?"#10b981":"#475569"}}>{c.bakiye<0?"BORÇLU":c.bakiye>0?"ALACAKLI":"SIFIR"}</div>
-          </div>
+          <div><div style={{color:"#93c5fd",fontWeight:600,fontSize:15}}>{c.ad}</div>{c.telefon&&<div style={{color:"#475569",fontSize:12,marginTop:2}}>{c.telefon}</div>}{(c.fisler||[]).length>0&&<div style={{color:"#475569",fontSize:11,marginTop:2}}>{c.fisler.length} fiş</div>}</div>
+          <div style={{textAlign:"right"}}><div style={{color:(c.bakiye||0)<0?"#ef4444":(c.bakiye||0)>0?"#10b981":"#475569",fontWeight:700,fontSize:15}}>{fmt$(c.bakiye||0)}</div><div style={{fontSize:10,color:(c.bakiye||0)<0?"#ef4444":(c.bakiye||0)>0?"#10b981":"#475569"}}>{(c.bakiye||0)<0?"BORÇLU":(c.bakiye||0)>0?"ALACAKLI":"SIFIR"}</div></div>
         </button>
       ))}
     </div>
@@ -772,10 +801,25 @@ function App(){
   const [cariler,setCariler]=useState(LS.get("cariler",[]));
   const [dukkan,setDukkan]=useState(LS.get("dukkan",DUKKAN_DEFAULT));
   const [fisler,setFisler]=useState(LS.get("fisler",[]));
+  const [duzenlenecekFis,setDuzenlenecekFis]=useState(null);
+
   useEffect(()=>{LS.set("cariler",cariler);},[cariler]);
   useEffect(()=>{LS.set("dukkan",dukkan);},[dukkan]);
   useEffect(()=>{LS.set("fisler",fisler);},[fisler]);
-  const fisCekildi=(fis)=>setFisler(p=>[...p,fis]);
+
+  const fisCekildi=(fis,duzenleme)=>{
+    if(duzenleme){
+      setFisler(p=>p.map(f=>f.no===fis.no?fis:f));
+    } else {
+      setFisler(p=>[...p,fis]);
+    }
+  };
+
+  const fisDuzenle=(fis)=>{
+    setDuzenlenecekFis(fis);
+    setSekme("fis");
+  };
+
   return(
     <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"#0f1923",color:"#e2e8f0",maxWidth:480,margin:"0 auto"}}>
       <div style={{background:"linear-gradient(90deg,#0a1520,#0f2035,#0a1520)",borderBottom:"2px solid #1e3a52",padding:"10px 16px",flexShrink:0,display:"flex",alignItems:"center",gap:10}}>
@@ -787,9 +831,9 @@ function App(){
         <div style={{fontSize:13,color:"#f0a500",fontWeight:700}}>$ USD</div>
       </div>
       <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-        {sekme==="fis"&&<FisEkrani cariler={cariler} setCariler={setCariler} dukkan={dukkan} onFisKesild={fisCekildi}/>}
-        {sekme==="gecmis"&&<GecmisEkrani fisler={fisler} setFisler={setFisler}/>}
-        {sekme==="hurda"&&<HurdaEkrani cariler={cariler} dukkan={dukkan} onFisKesild={fisCekildi}/>}
+        {sekme==="fis"&&<FisEkrani cariler={cariler} setCariler={setCariler} dukkan={dukkan} onFisKesild={fisCekildi} duzenlenecekFis={duzenlenecekFis} onDuzenlemeTemizle={()=>setDuzenlenecekFis(null)}/>}
+        {sekme==="gecmis"&&<GecmisEkrani fisler={fisler} setFisler={setFisler} onDuzenle={fisDuzenle}/>}
+        {sekme==="hurda"&&<HurdaEkrani cariler={cariler} dukkan={dukkan} onFisKesild={(f)=>fisCekildi(f,false)}/>}
         {sekme==="cari"&&<CariEkrani cariler={cariler} setCariler={setCariler}/>}
         {sekme==="ayarlar"&&<AyarlarEkrani dukkan={dukkan} setDukkan={setDukkan}/>}
       </div>
