@@ -213,10 +213,13 @@ function FisGoruntule({fis,onKapat,onDuzenle}){
         ))}
         <div style={{borderTop:"1px dashed #aaa",marginTop:4,paddingTop:8}}>
           {fis.toplamGram>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}><span>Toplam Gümüş</span><span style={{fontWeight:700}}>{fis.toplamGram}gr</span></div>}
-          {fis.toplamIscilik>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}><span>Toplam İşçilik</span><span style={{fontWeight:700}}>{fmt$(fis.toplamIscilik)}</span></div>}
-          <div style={{display:"flex",justifyContent:"space-between",fontWeight:700,fontSize:15}}>
-            <span>TOPLAM</span><span>{fis.toplamGram>0?`${fis.toplamGram}gr `:""}{fmt$(fis.toplam)}</span>
-          </div>
+          {fis.toplamIscilik>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}}><span>Toplam İşçilik</span><span style={{fontWeight:700}}>{fmt$(fis.toplamIscilik)}</span></div>}
+          {/* Cari durum varsa toplam tekrar gösterme */}
+          {!(fis.musteriAd&&fis.oncekiBakiye!==undefined)&&(
+            <div style={{display:"flex",justifyContent:"space-between",fontWeight:700,fontSize:15,marginTop:4}}>
+              <span>TOPLAM</span><span>{fis.toplamGram>0?`${fis.toplamGram}gr `:""}{fmt$(fis.toplam)}</span>
+            </div>
+          )}
         </div>
         {/* Bakiye özeti */}
         {fis.musteriAd&&fis.oncekiBakiye!==undefined&&(
@@ -459,14 +462,22 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild,duzenlenecekFis,onTemi
     if(musteri){
       const katLbl=KATEGORILER.find(k=>k.id===kat)?.label||"";
       if(!odeme){
-        // Veresiye: bakiyeyi düş, işlem ekle
-        const islem={id:Date.now(),tip:"borc",tutar:toplam,aciklama:`Fiş ${fis.no} — ${katLbl}${toplamGram?` (${toplamGram}gr gümüş)`:""}`,tarih:fis.tarih,fisNo:fis.no};
-        setCariler(prev=>prev.map(c=>{
-          if(String(c.id)!==String(musteri.id))return c;
-          return{...c,bakiye:(c.bakiye||0)-toplam,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]};
-        }));
+        // Veresiye: gümüş satışta gram + işçilik ayrı, diğerlerinde dolar
+        if(kat==="gumus_satis"){
+          const islem={id:Date.now(),tip:"borc",tutar:toplamIscilik,gram:toplamGram,aciklama:`Fiş ${fis.no} — ${katLbl} (${toplamGram}gr gümüş + ${fmt$(toplamIscilik)} işçilik)`,tarih:fis.tarih,fisNo:fis.no};
+          setCariler(prev=>prev.map(c=>{
+            if(String(c.id)!==String(musteri.id))return c;
+            return{...c,bakiye:(c.bakiye||0)-toplamIscilik,gramBakiye:(c.gramBakiye||0)-toplamGram,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]};
+          }));
+        } else {
+          const islem={id:Date.now(),tip:"borc",tutar:toplam,aciklama:`Fiş ${fis.no} — ${katLbl}`,tarih:fis.tarih,fisNo:fis.no};
+          setCariler(prev=>prev.map(c=>{
+            if(String(c.id)!==String(musteri.id))return c;
+            return{...c,bakiye:(c.bakiye||0)-toplam,islemler:[islem,...(c.islemler||[])],fisler:[fis,...(c.fisler||[])]};
+          }));
+        }
       } else {
-        // Ödeme alındı: bakiye değişmez, sadece fiş ekle
+        // Nakit ödeme alındı
         const islem={id:Date.now(),tip:"odeme",tutar:toplam,aciklama:`Fiş ${fis.no} — Nakit`,tarih:fis.tarih,fisNo:fis.no};
         setCariler(prev=>prev.map(c=>{
           if(String(c.id)!==String(musteri.id))return c;
@@ -757,7 +768,13 @@ function CariEkrani({cariler,setCariler}){
         <div style={{marginTop:12,padding:"12px 14px",background:"#0f1923",borderRadius:8}}>
           <div style={{color:"#475569",fontSize:11,letterSpacing:1}}>BAKİYE</div>
           <div style={{color:(sec.bakiye||0)<0?"#ef4444":(sec.bakiye||0)>0?"#10b981":"#475569",fontSize:26,fontWeight:700,marginTop:2}}>{fmt$(sec.bakiye||0)}</div>
-          <div style={{color:"#475569",fontSize:11}}>{(sec.bakiye||0)<0?"BORÇLU":(sec.bakiye||0)>0?"ALACAKLI":"SIFIR"}</div>
+          {(sec.gramBakiye||0)!==0&&(
+            <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:12,color:"#64748b"}}>Gümüş:</span>
+              <span style={{fontSize:16,fontWeight:700,color:(sec.gramBakiye||0)<0?"#ef4444":"#94a3b8"}}>{Math.abs(sec.gramBakiye||0).toFixed(3)}gr {(sec.gramBakiye||0)<0?"BORÇLU":"ALACAKLI"}</span>
+            </div>
+          )}
+          <div style={{color:"#475569",fontSize:11,marginTop:4}}>{(sec.bakiye||0)<0?"BORÇLU":(sec.bakiye||0)>0?"ALACAKLI":"SIFIR"}</div>
         </div>
       </div>
 
@@ -845,6 +862,7 @@ function CariEkrani({cariler,setCariler}){
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{color:(c.bakiye||0)<0?"#ef4444":(c.bakiye||0)>0?"#10b981":"#475569",fontWeight:700,fontSize:15}}>{fmt$(c.bakiye||0)}</div>
+            {(c.gramBakiye||0)!==0&&<div style={{color:(c.gramBakiye||0)<0?"#ef4444":"#94a3b8",fontSize:11}}>{Math.abs(c.gramBakiye||0).toFixed(2)}gr gümüş</div>}
             <div style={{fontSize:10,color:(c.bakiye||0)<0?"#ef4444":(c.bakiye||0)>0?"#10b981":"#475569"}}>{(c.bakiye||0)<0?"BORÇLU":(c.bakiye||0)>0?"ALACAKLI":"SIFIR"}</div>
           </div>
         </button>
