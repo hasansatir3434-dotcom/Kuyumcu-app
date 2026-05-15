@@ -95,10 +95,13 @@ function Nav({aktif,setAktif}){
 function buildFisHtml(fis){
   const kat=KATEGORILER.find(k=>k.id===fis.kategori)?.label||"";
   const rows=fis.kalemler.map(k=>{
+    const gumusAyarObj=AYARLAR_GUMUS.find(a=>a.label===k.ayar);
+    const altinAyarObj=AYARLAR_ALTIN.find(a=>a.label===k.ayar);
     if(k.tip==="gumus_iscilik"){
       const isc=(parseFloat(k.gram)||0)*(parseFloat(k.iscilikFiyat)||0);
+      const has=k.ayar&&gumusAyarObj?` → ${((parseFloat(k.gram)||0)*gumusAyarObj.oran).toFixed(3)}gr has`:"";
       return `<div style="font-weight:700;margin-top:6px">${k.aciklama||"Gümüş"}</div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>Gümüş${k.ayar?" ("+k.ayar+")":""}</span><span>${k.gram}gr</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>Gümüş${k.ayar?" ("+k.ayar+")":""}${has}</span><span>${k.gram}gr</span></div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>İşçilik ${k.gram}gr×$${k.iscilikFiyat}</span><span style="font-weight:700">${fmt$(isc)}</span></div>`;
     }
     if(k.tip==="adetli"){
@@ -106,8 +109,9 @@ function buildFisHtml(fis){
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>${k.adet} adet × ${fmt$(k.adetFiyat)}</span><span style="font-weight:700">${fmt$(k.tutar)}</span></div>`;
     }
     const isc=k.iscilikMod==="gramBazli"&&k.iscilikFiyat?` + İşç:${fmt$((parseFloat(k.gram)||0)*(parseFloat(k.iscilikFiyat)||0))}`:k.iscilikMod==="sabit"&&k.sabitIscilik?` + İşç:${fmt$(k.sabitIscilik)}`:"";
+    const has=k.ayar&&altinAyarObj?` → ${((parseFloat(k.gram)||0)*altinAyarObj.oran).toFixed(3)}gr has`:"";
     return `<div style="font-weight:700;margin-top:6px">${k.aciklama||"Ürün"}</div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>${k.gram}gr × ${fmt$(k.birimFiyat)}/gr${k.ayar?" ("+k.ayar+")":""}${isc}</span><span style="font-weight:700">${fmt$(k.tutar)}</span></div>`;
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>${k.gram}gr × ${fmt$(k.birimFiyat)}/gr${k.ayar?" ("+k.ayar+")":""}${has}${isc}</span><span style="font-weight:700">${fmt$(k.tutar)}</span></div>`;
   }).join("");
 
   // Bakiye satırı: sadece ödeme alındıysa
@@ -169,7 +173,11 @@ function FisGoruntule({fis,onKapat,onDuzenle}){
             {k.tip==="gumus_iscilik"&&(
               <>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555"}}>
-                  <span>Gümüş{k.ayar?` (${k.ayar})`:""}</span><span>{k.gram}gr</span>
+                  <span>Gümüş{k.ayar?` (${k.ayar})`:""}
+                  {k.ayar&&k.gram&&AYARLAR_GUMUS.find(a=>a.label===k.ayar)?
+                    <span style={{color:"#888"}}> → {((parseFloat(k.gram)||0)*AYARLAR_GUMUS.find(a=>a.label===k.ayar).oran).toFixed(3)}gr has</span>:""
+                  }</span>
+                  <span>{k.gram}gr</span>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555"}}>
                   <span>İşçilik {k.gram}gr×${k.iscilikFiyat}</span>
@@ -185,7 +193,11 @@ function FisGoruntule({fis,onKapat,onDuzenle}){
             {k.tip==="gramli"&&(
               <>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#555"}}>
-                  <span>{k.gram}gr × {fmt$(k.birimFiyat)}/gr{k.ayar?` (${k.ayar})`:""}</span><strong>{fmt$(k.tutar)}</strong>
+                  <span>{k.gram}gr × {fmt$(k.birimFiyat)}/gr{k.ayar?` (${k.ayar})`:""}
+                  {k.ayar&&k.gram&&AYARLAR_ALTIN.find(a=>a.label===k.ayar)?
+                    <span style={{color:"#888"}}> → {((parseFloat(k.gram)||0)*AYARLAR_ALTIN.find(a=>a.label===k.ayar).oran).toFixed(3)}gr has</span>:""
+                  }</span>
+                  <strong>{fmt$(k.tutar)}</strong>
                 </div>
                 {k.iscilikMod==="gramBazli"&&k.iscilikFiyat&&<div style={{fontSize:11,color:"#888"}}>İşçilik: {k.gram}gr × {fmt$(k.iscilikFiyat)}</div>}
                 {k.iscilikMod==="sabit"&&k.sabitIscilik&&<div style={{fontSize:11,color:"#888"}}>İşçilik: {fmt$(k.sabitIscilik)}</div>}
@@ -363,7 +375,7 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild,duzFis,onTemizle}){
   const [fisGoster,setFisGoster]=useState(null);
   const duz=!!duzFis;
 
-  const bosGumus=()=>({id:Date.now()+Math.random(),tip:"gumus_iscilik",aciklama:"",ayar:"",gram:"",iscilikFiyat:"",adet:"",adetFiyat:"",tutar:0});
+  const bosGumus=()=>({id:Date.now()+Math.random(),tip:"gumus_iscilik",aciklama:"",ayar:"925",gram:"",iscilikFiyat:"",adet:"",adetFiyat:"",tutar:0});
   const bosAltin=()=>({id:Date.now()+Math.random(),tip:"gramli",aciklama:"",ayar:"",gram:"",birimFiyat:"",iscilikMod:"sabit",iscilikFiyat:"",sabitIscilik:"",adet:"",adetFiyat:"",tutar:0});
 
   const katDegistir=(k)=>{if(duz)return;setKat(k);setKalemler([]);setOdeme(null);};
