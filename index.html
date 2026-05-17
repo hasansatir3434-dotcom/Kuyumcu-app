@@ -859,16 +859,20 @@ function CariEkrani({cariler,setCariler}){
       {cariler.length>0&&(
         <div style={{...S.card,borderColor:"#1e3a52",marginBottom:12}}>
           <div style={{color:"#64748b",fontSize:11,letterSpacing:1,marginBottom:8}}>GENEL ÖZET</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
             <div style={{background:"#2a0a0a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11}}>Toplam Borcum</div>
-              <div style={{color:"#ef4444",fontWeight:700,fontSize:16,marginTop:2}}>{fmt$(Math.abs(toplamBorc))}</div>
-              <div style={{color:"#475569",fontSize:10}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Borcum</div>
+              <div style={{color:"#ef4444",fontWeight:700,fontSize:15}}>{fmt$(Math.abs(cariler.filter(c=>(c.bakiye||0)<0).reduce((a,c)=>a+(c.bakiye||0),0)))}</div>
+              {cariler.some(c=>(c.gramBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{Math.abs(cariler.filter(c=>(c.gramBakiye||0)<0).reduce((a,c)=>a+(c.gramBakiye||0),0)).toFixed(2)}gr⚪</div>}
+              {cariler.some(c=>(c.tlBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{fmtTL(Math.abs(cariler.filter(c=>(c.tlBakiye||0)<0).reduce((a,c)=>a+(c.tlBakiye||0),0)))}</div>}
+              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
             </div>
             <div style={{background:"#0a2a1a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11}}>Toplam Alacağım</div>
-              <div style={{color:"#10b981",fontWeight:700,fontSize:16,marginTop:2}}>{fmt$(toplamAlacak)}</div>
-              <div style={{color:"#475569",fontSize:10}}>{cariler.filter(c=>(c.bakiye||0)>0).length} müşteri</div>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Alacağım</div>
+              <div style={{color:"#10b981",fontWeight:700,fontSize:15}}>{fmt$(cariler.filter(c=>(c.bakiye||0)>0).reduce((a,c)=>a+(c.bakiye||0),0))}</div>
+              {cariler.some(c=>(c.gramBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{cariler.filter(c=>(c.gramBakiye||0)>0).reduce((a,c)=>a+(c.gramBakiye||0),0).toFixed(2)}gr⚪</div>}
+              {cariler.some(c=>(c.tlBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{fmtTL(cariler.filter(c=>(c.tlBakiye||0)>0).reduce((a,c)=>a+(c.tlBakiye||0),0))}</div>}
+              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)>0).length} müşteri</div>
             </div>
           </div>
         </div>
@@ -888,113 +892,4 @@ function CariEkrani({cariler,setCariler}){
           <div style={{textAlign:"right"}}>
             <div style={{color:(c.bakiye||0)<0?"#ef4444":(c.bakiye||0)>0?"#10b981":"#475569",fontWeight:700,fontSize:15}}>{fmt$(c.bakiye||0)}</div>
             {(c.gramBakiye||0)!==0&&<div style={{color:"#94a3b8",fontSize:11}}>{Math.abs(c.gramBakiye||0).toFixed(2)}gr⚪</div>}
-            {(c.tlBakiye||0)!==0&&<div style={{color:(c.tlBakiye||0)<0?"#ef4444":"#10b981",fontSize:11}}>{fmtTL(c.tlBakiye||0)}</div>}
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── AYARLAR ─────────────────────────────────────────────────────────────────
-function AyarlarEkrani({dukkan,setDukkan,cariler,setCariler,fisler,setFisler}){
-  const [form,setForm]=useState(dukkan);
-  const [ok,setOk]=useState(false);
-  const [msg,setMsg]=useState("");
-  const kaydet=()=>{setDukkan(form);setOk(true);setTimeout(()=>setOk(false),2000);};
-
-  const disaAktar=()=>{
-    const veri={cariler,fisler,dukkan,tarih:new Date().toLocaleString("tr-TR"),versiyon:1};
-    const b=new Blob([JSON.stringify(veri,null,2)],{type:"application/json"});
-    const u=URL.createObjectURL(b);
-    const a=document.createElement("a");
-    a.href=u;a.download=`kuyumcu_yedek_${new Date().toLocaleDateString("tr-TR").replace(/\./g,"-")}.json`;
-    a.click();URL.revokeObjectURL(u);
-  };
-
-  const iceAktar=(e)=>{
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=(ev)=>{
-      try{
-        const v=JSON.parse(ev.target.result);
-        if(!v.cariler||!v.fisler){setMsg("❌ Geçersiz dosya!");return;}
-        if(!window.confirm(`${v.cariler.length} cari ve ${v.fisler.length} fiş yüklenecek. Mevcut veriler silinecek. Emin misiniz?`))return;
-        setCariler(v.cariler);setFisler(v.fisler);
-        if(v.dukkan)setDukkan(v.dukkan);
-        setMsg("✅ Veriler yüklendi!");setTimeout(()=>setMsg(""),3000);
-      }catch{setMsg("❌ Dosya okunamadı!");}
-    };
-    r.readAsText(f);e.target.value="";
-  };
-
-  return(
-    <div style={{flex:1,overflowY:"auto",padding:14}}>
-      <div style={{...S.card,borderColor:"#f0a50055"}}>
-        <div style={{color:"#f0a500",fontWeight:700,marginBottom:12,fontSize:15}}>💾 Veri Yedekleme</div>
-        <button onClick={disaAktar} style={{...S.btn("linear-gradient(135deg,#f0a500,#d97706)","#1a0800"),marginBottom:10}}>⬇️ Verileri Dışa Aktar</button>
-        <div style={{color:"#64748b",fontSize:12,marginBottom:12,lineHeight:1.6}}>⚠️ Güncelleme yapmadan önce mutlaka yedek alın!</div>
-        <label style={{...S.btn("#1e2d3d","#60a5fa"),display:"block",textAlign:"center",cursor:"pointer",border:"1px solid #2d4a6e"}}>
-          ⬆️ Yedekten Geri Yükle
-          <input type="file" accept=".json" onChange={iceAktar} style={{display:"none"}}/>
-        </label>
-        {msg&&<div style={{marginTop:8,padding:"6px 10px",background:"#0f1923",borderRadius:6,fontSize:13,color:msg.startsWith("✅")?"#10b981":"#ef4444"}}>{msg}</div>}
-      </div>
-      <div style={S.card}>
-        <div style={{color:"#60a5fa",fontWeight:700,marginBottom:14,fontSize:15}}>🏪 Dükkan Bilgileri</div>
-        <span style={S.lbl}>DÜKKAN ADI</span>
-        <input value={form.ad} onChange={e=>setForm(p=>({...p,ad:e.target.value}))} style={{...S.inp,marginBottom:10}}/>
-        <span style={S.lbl}>ADRES</span>
-        <input value={form.adres} onChange={e=>setForm(p=>({...p,adres:e.target.value}))} style={{...S.inp,marginBottom:10}}/>
-        <span style={S.lbl}>TELEFON</span>
-        <input value={form.telefon} onChange={e=>setForm(p=>({...p,telefon:e.target.value}))} type="tel" style={{...S.inp,marginBottom:14}}/>
-        <button onClick={kaydet} style={S.btn(ok?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#3b82f6,#2563eb)")}>{ok?"✅ Kaydedildi!":"💾 Kaydet"}</button>
-      </div>
-      <div style={{...S.card,borderColor:"#1e3a52"}}>
-        <div style={{color:"#64748b",fontSize:13,lineHeight:1.8}}>
-          <b style={{color:"#60a5fa"}}>📱 Ana Ekrana Ekle</b><br/>
-          <b style={{color:"#94a3b8"}}>iPhone:</b> Safari → Paylaş → Ana Ekrana Ekle<br/>
-          <b style={{color:"#94a3b8"}}>Android:</b> Chrome → Menü → Ana Ekrana Ekle
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── ANA ─────────────────────────────────────────────────────────────────────
-function App(){
-  const [sekme,setSekme]=useState("fis");
-  const [cariler,setCariler]=useState(LS.get("cariler",[]));
-  const [dukkan,setDukkan]=useState(LS.get("dukkan",DUKKAN_DEFAULT));
-  const [fisler,setFisler]=useState(LS.get("fisler",[]));
-  const [duzFis,setDuzFis]=useState(null);
-  useEffect(()=>{LS.set("cariler",cariler);},[cariler]);
-  useEffect(()=>{LS.set("dukkan",dukkan);},[dukkan]);
-  useEffect(()=>{LS.set("fisler",fisler);},[fisler]);
-  const fisKesild=(fis,duz)=>setFisler(p=>duz?p.map(f=>f.no===fis.no?fis:f):[...p,fis]);
-  const fisDuzenle=(fis)=>{setDuzFis(fis);setSekme("fis");};
-  return(
-    <div style={{height:"100vh",display:"flex",flexDirection:"column",background:"#0f1923",color:"#e2e8f0",maxWidth:480,margin:"0 auto"}}>
-      <div style={{background:"linear-gradient(90deg,#0a1520,#0f2035,#0a1520)",borderBottom:"2px solid #1e3a52",padding:"10px 16px",flexShrink:0,display:"flex",alignItems:"center",gap:10}}>
-        <Logo size={38}/>
-        <div style={{flex:1}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#60a5fa",letterSpacing:1}}>{dukkan.ad}</div>
-          <div style={{fontSize:10,color:"#334155",letterSpacing:1}}>KUYUMCU YÖNETİM SİSTEMİ</div>
-        </div>
-        <div style={{fontSize:13,color:"#f0a500",fontWeight:700}}>$ USD</div>
-      </div>
-      <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-        {sekme==="fis"&&<FisEkrani cariler={cariler} setCariler={setCariler} dukkan={dukkan} onFisKesild={fisKesild} duzFis={duzFis} onTemizle={()=>setDuzFis(null)}/>}
-        {sekme==="gecmis"&&<GecmisEkrani fisler={fisler} setFisler={setFisler} onDuzenle={fisDuzenle}/>}
-        {sekme==="hurda"&&<HurdaEkrani cariler={cariler} dukkan={dukkan} onFisKesild={(f)=>fisKesild(f,false)}/>}
-        {sekme==="cari"&&<CariEkrani cariler={cariler} setCariler={setCariler}/>}
-        {sekme==="ayarlar"&&<AyarlarEkrani dukkan={dukkan} setDukkan={setDukkan} cariler={cariler} setCariler={setCariler} fisler={fisler} setFisler={setFisler}/>}
-      </div>
-      <Nav aktif={sekme} setAktif={setSekme}/>
-    </div>
-  );
-}
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-</body>
-</html>
+            {(c.tlBakiye||0)!==0&&<div style={{color:(c.tlBakiye||0)<0?"#ef4444":"#10b981",fontSize
