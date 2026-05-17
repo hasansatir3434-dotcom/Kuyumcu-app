@@ -1,4 +1,4 @@
-const CACHE="kuyumcu-v3";
+const CACHE="kuyumcu-v4";
 const FILES=["/","/index.html","/manifest.json","/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js",
