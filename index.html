@@ -861,19 +861,19 @@ function CariEkrani({cariler,setCariler}){
         <div style={{...S.card,borderColor:"#1e3a52",marginBottom:12}}>
           <div style={{color:"#64748b",fontSize:11,letterSpacing:1,marginBottom:8}}>GENEL ÖZET</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-            <div style={{background:"#2a0a0a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Borcum</div>
-              <div style={{color:"#ef4444",fontWeight:700,fontSize:15}}>{fmt$(Math.abs(cariler.filter(c=>(c.bakiye||0)<0).reduce((a,c)=>a+(c.bakiye||0),0)))}</div>
-              {cariler.some(c=>(c.gramBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{Math.abs(cariler.filter(c=>(c.gramBakiye||0)<0).reduce((a,c)=>a+(c.gramBakiye||0),0)).toFixed(2)}gr⚪</div>}
-              {cariler.some(c=>(c.tlBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{fmtTL(Math.abs(cariler.filter(c=>(c.tlBakiye||0)<0).reduce((a,c)=>a+(c.tlBakiye||0),0)))}</div>}
-              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
-            </div>
             <div style={{background:"#0a2a1a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Alacağım</div>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>+ Alacağım</div>
               <div style={{color:"#10b981",fontWeight:700,fontSize:15}}>{fmt$(cariler.filter(c=>(c.bakiye||0)>0).reduce((a,c)=>a+(c.bakiye||0),0))}</div>
               {cariler.some(c=>(c.gramBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{cariler.filter(c=>(c.gramBakiye||0)>0).reduce((a,c)=>a+(c.gramBakiye||0),0).toFixed(2)}gr⚪</div>}
               {cariler.some(c=>(c.tlBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{fmtTL(cariler.filter(c=>(c.tlBakiye||0)>0).reduce((a,c)=>a+(c.tlBakiye||0),0))}</div>}
               <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)>0).length} müşteri</div>
+            </div>
+            <div style={{background:"#2a0a0a",borderRadius:8,padding:"10px 12px"}}>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>- Borcum</div>
+              <div style={{color:"#ef4444",fontWeight:700,fontSize:15}}>{fmt$(Math.abs(cariler.filter(c=>(c.bakiye||0)<0).reduce((a,c)=>a+(c.bakiye||0),0)))}</div>
+              {cariler.some(c=>(c.gramBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{Math.abs(cariler.filter(c=>(c.gramBakiye||0)<0).reduce((a,c)=>a+(c.gramBakiye||0),0)).toFixed(2)}gr⚪</div>}
+              {cariler.some(c=>(c.tlBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{fmtTL(Math.abs(cariler.filter(c=>(c.tlBakiye||0)<0).reduce((a,c)=>a+(c.tlBakiye||0),0)))}</div>}
+              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
             </div>
           </div>
         </div>
