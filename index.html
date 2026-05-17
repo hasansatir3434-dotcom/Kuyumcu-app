@@ -320,8 +320,9 @@ function GumusKalem({kalem,idx,onChange,onSil}){
       </div>
       {kalem.tip==="gumus_iscilik"&&(
         <>
-          <span style={S.lbl}>AYAR</span>
-          <select value={kalem.ayar} onChange={e=>upd("ayar",e.target.value)} style={{...S.inp,marginBottom:6}}>
+          <span style={S.lbl}>AYAR (OPSİYONEL)</span>
+          <select value={kalem.ayar} onChange={e=>upd("ayar",e.target.value)} style={{...S.inp,marginBottom:6,color:kalem.ayar?"#e2e8f0":"#64748b"}}>
+            <option value="">— Ayar seçin (opsiyonel) —</option>
             {AYARLAR_GUMUS.map(a=><option key={a.label} value={a.label}>{a.label}</option>)}
           </select>
           {ayarObj&&gr>0&&<div style={{fontSize:11,color:"#60a5fa",marginBottom:8,padding:"3px 8px",background:"#1e2d3d",borderRadius:4,display:"inline-block"}}>{gr}gr × {Math.round(ayarObj.oran*1000)} = {(gr*ayarObj.oran).toFixed(3)}gr has</div>}
@@ -469,7 +470,7 @@ function FisEkrani({cariler,setCariler,dukkan,onFisKesild,duzFis,onTemizle}){
   const [fisGoster,setFisGoster]=useState(null);
   const duz=!!duzFis;
 
-  const bosGumus=()=>({id:Date.now()+Math.random(),tip:"gumus_iscilik",aciklama:"",ayar:"925",gram:"",iscilikFiyat:"",adet:"",adetFiyat:"",para:"USD",tutar:0});
+  const bosGumus=()=>({id:Date.now()+Math.random(),tip:"gumus_iscilik",aciklama:"",ayar:"",gram:"",iscilikFiyat:"",adet:"",adetFiyat:"",para:"USD",tutar:0});
   const bosAltin=()=>({id:Date.now()+Math.random(),tip:"gramli",aciklama:"",ayar:"",gram:"",birimFiyat:"",iscilikMod:"sabit",iscilikFiyat:"",sabitIscilik:"",adet:"",adetFiyat:"",para:"USD",tutar:0});
   const katDegistir=(k)=>{if(duz)return;setKat(k);setKalemler([]);setOdeme(null);};
   const ekle=()=>setKalemler(p=>[...p,kat==="gumus_satis"?bosGumus():bosAltin()]);
@@ -859,16 +860,20 @@ function CariEkrani({cariler,setCariler}){
       {cariler.length>0&&(
         <div style={{...S.card,borderColor:"#1e3a52",marginBottom:12}}>
           <div style={{color:"#64748b",fontSize:11,letterSpacing:1,marginBottom:8}}>GENEL ÖZET</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
             <div style={{background:"#2a0a0a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11}}>Toplam Borcum</div>
-              <div style={{color:"#ef4444",fontWeight:700,fontSize:16,marginTop:2}}>{fmt$(Math.abs(toplamBorc))}</div>
-              <div style={{color:"#475569",fontSize:10}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Borcum</div>
+              <div style={{color:"#ef4444",fontWeight:700,fontSize:15}}>{fmt$(Math.abs(cariler.filter(c=>(c.bakiye||0)<0).reduce((a,c)=>a+(c.bakiye||0),0)))}</div>
+              {cariler.some(c=>(c.gramBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{Math.abs(cariler.filter(c=>(c.gramBakiye||0)<0).reduce((a,c)=>a+(c.gramBakiye||0),0)).toFixed(2)}gr⚪</div>}
+              {cariler.some(c=>(c.tlBakiye||0)<0)&&<div style={{color:"#ef4444",fontSize:12}}>{fmtTL(Math.abs(cariler.filter(c=>(c.tlBakiye||0)<0).reduce((a,c)=>a+(c.tlBakiye||0),0)))}</div>}
+              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)<0).length} müşteri</div>
             </div>
             <div style={{background:"#0a2a1a",borderRadius:8,padding:"10px 12px"}}>
-              <div style={{color:"#64748b",fontSize:11}}>Toplam Alacağım</div>
-              <div style={{color:"#10b981",fontWeight:700,fontSize:16,marginTop:2}}>{fmt$(toplamAlacak)}</div>
-              <div style={{color:"#475569",fontSize:10}}>{cariler.filter(c=>(c.bakiye||0)>0).length} müşteri</div>
+              <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>Toplam Alacağım</div>
+              <div style={{color:"#10b981",fontWeight:700,fontSize:15}}>{fmt$(cariler.filter(c=>(c.bakiye||0)>0).reduce((a,c)=>a+(c.bakiye||0),0))}</div>
+              {cariler.some(c=>(c.gramBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{cariler.filter(c=>(c.gramBakiye||0)>0).reduce((a,c)=>a+(c.gramBakiye||0),0).toFixed(2)}gr⚪</div>}
+              {cariler.some(c=>(c.tlBakiye||0)>0)&&<div style={{color:"#10b981",fontSize:12}}>{fmtTL(cariler.filter(c=>(c.tlBakiye||0)>0).reduce((a,c)=>a+(c.tlBakiye||0),0))}</div>}
+              <div style={{color:"#475569",fontSize:10,marginTop:2}}>{cariler.filter(c=>(c.bakiye||0)>0).length} müşteri</div>
             </div>
           </div>
         </div>
