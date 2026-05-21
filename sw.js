@@ -1,4 +1,4 @@
-const CACHE = "kuyumcu-v10";
+const CACHE = "kuyumcu-v5";
 const FILES = [
   "/", "/index.html", "/manifest.json",
   "https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
